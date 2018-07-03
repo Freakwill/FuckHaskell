@@ -25,5 +25,5 @@ runHaskell Scripts/showFile.hs --filename [FILEPATH] --linen 50
 
 ### WoW
 
-![](/Users/william/Programming/myGithub/FuckHaskell/langs.png)
+![](https://github.com/Freakwill/FuckHaskell/blob/master/langs.png?raw=true)
 
