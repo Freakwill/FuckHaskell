@@ -13,4 +13,17 @@ operating strings
 
 ## showFile
 
-it is a command line tool
+It is a command line tool.
+
+```haskell
+runHaskell Scripts/showFile.hs --filename [FILEPATH] --linen 50
+```
+
+
+
+## Other topics
+
+### WoW
+
+![](/Users/william/Programming/myGithub/FuckHaskell/langs.png)
+
