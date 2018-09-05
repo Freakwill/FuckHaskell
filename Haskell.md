@@ -2,7 +2,7 @@
 
 [TOC]
 
-假设读者都有函数式编程方面的知识。
+假设读者都有函数式编程方面的知识.
 
 ## 概念
 
@@ -785,7 +785,7 @@ instance Functor (Reader r) where
 m >> f = Reader $ \r -> runReader (f (runReader m r)) r
 ```
 
-$Rr:$ Reader 函子
+$Rr:$ Reader 函子, $Hom(r,\cdot)$
 
 $Rr(f)x= R(\lambda y:r. f(\phi(x)(y)))=R(f\circ\phi(x))$
 
@@ -831,7 +831,7 @@ class Foldable t where
     -- foldMap f = fold . (<$> f)
     
     
- data BinaryTree a = Nil | Node a (BinaryTree a) (BinaryTree a)
+data BinaryTree a = Nil | Node a (BinaryTree a) (BinaryTree a)
      deriving (Show)
      
 instance Foldable BinaryTree where
@@ -881,15 +881,18 @@ $S(N)=T(i, N): TFa\to FTa, T(f,N)=S(\tilde{f}(N))$.
 
 ```haskell
 newtype ReaderT r m a = ReaderT {runReaderT :: r-> m a}
+-- ReaderT r m a = r -> m a
 
 instance (Monad m) => Monad (ReaderT r m) where
 m >>= k = ReaderT $ \r -> do
     a <- runReaderT m r
     runReaderT (k a) r
 -- ReaderT $ \r -> runReaderT m r >>= \a -> runReaderT (k a) r
+-- \r -> m(r) >>= \a -> k(a)(r), r represents the local information
 
 liftReaderT :: m a -> ReaderT r m a
 liftReaderT m = ReaderT (const m)
+-- ReaderT \_ -> m
 
 -- example
 printEnv :: ReaderT String IO ()
@@ -901,5 +904,12 @@ ask = ReaderT return
 
 local :: (r -> r) -> ReaderT r m a -> ReaderT r m a
 local f m = ReaderT $ \r -> runReaderT m (f r)
+```
+
+
+
+```haskell
+class MonadTrans t where
+    lift :: Monad m => m a -> t m a
 ```
 
