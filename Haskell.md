@@ -504,6 +504,8 @@ $\eta(x)=\{x_i=x\}; Z(\{f_i\})\circledast Z(\{x_i\})= Z(\{f_i(x_i)\})$.
 
 ## 单子
 
+单子是Haskell最有特点的一部分
+
 ```haskell
 class Monad m where  
     return :: a -> m a  -- pure
@@ -524,6 +526,7 @@ f <=< g = (\x -> g x >>= f)  -- g >=> f
 f <*> x = join $ fmap (\f -> fmap f x) f -- f>>= (\f -> f <$> x)
 
 -- example
+-- guard : true|->[()], false|->[]
 Prelude Control.Monad> [1..50] >>= (\x -> guard ('7' `elem` show x) >> return x)   
 [7,17,27,37,47]  
 Prelude Control.Monad> do { x <- [1..50]; guard ('7' `elem` show x); return x }  
