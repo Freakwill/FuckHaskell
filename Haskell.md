@@ -595,7 +595,7 @@ do {s; t; g} == s >> t >> g
 ### 列表单子
 
 ```haskell
-sequence :: t (m a) -> m (t a)
+sequence :: t (m a) -> m (t a)  -- 类型转换
 -- t = []
 sequence [] = return []
 sequence a:as = a >>= \x -> ((\l -> x:l) <$> sequence as) -- 类似于 Descartes 积
@@ -604,16 +604,33 @@ sequence_ [] = return ()
 sequence_ a:as = a >> sequence_ as
 
 mapM = sequence . map :: (a -> m b) -> [a] -> m [b]
-mapM_ = sequence_ . map
+mapM_ = sequence_ . map :: (a -> m b) -> [a] -> m ()
 
-forM = flip mapM -- 模拟 for 循环
+forM = flip mapM :: [a] -> (a -> m b) -> m [b] -- 模拟 for 循环
+forM_ = flip mapM_
+
+main = forM_ [5..10] $ \n -> do
+    putStrLn $ "Solutions for queen" ++ (show n) ++ " problem:"
+    forM_ (queensN n) $ print
 
 replicateM :: Int -> m a -> m [a]
+replicateM_ :: Int -> m a -> m ()
+
+
 forever :: m a -> m b
+
+main = forever $ do
+    input <- getLine
+    putStrLn $ answer input
 
 filterM :: (a -> m Bool) -> [a] -> m [a]
 
 foldM :: (b -> a -> m b) -> b -> t a -> m b
+
+-- example
+
+\m -> mapM . (const m) :: m b -> [a] -> m [b]
+
 ```
 
 
@@ -879,6 +896,8 @@ $S(N)=T(i, N): TFa\to FTa, T(f,N)=S(\tilde{f}(N))$.
 
 ## 单子变换: 构造函数 m -> tm
 
+### ReaderT
+
 ```haskell
 newtype ReaderT r m a = ReaderT {runReaderT :: r-> m a}
 -- ReaderT r m a = r -> m a
@@ -908,8 +927,43 @@ local f m = ReaderT $ \r -> runReaderT m (f r)
 
 
 
+#### StateT
+
+```haskell
+newtype StateT s m a = State {runStateT :: s -> m (a, s)}
+
+instance (Monad m) => Monad (StateT s m) where
+    m >>= k = StateT $ \s -> do
+    (a, s') <- runState m s
+    runStateT (k a) s'
+    
+    liftState :: (Monad m) => m a -> StatT s m a
+    liftState m = StateT $ \s -> do
+        a <- m
+        return (a, s)
+        
+    state f = StateT return . f  -- eta.f
+```
+
+$S a = s \to M (a\times s), \eta a = s\to \eta(a,s)$
+
+
+
+### MonadTrans
+
+
+
 ```haskell
 class MonadTrans t where
     lift :: Monad m => m a -> t m a
+    
+instance MonadTrans (ReaderT r) where
+    lift = liftReaderT
+    
+instance MonadTrans (StateT r) where
+    lift = liftStateT
+    
+-- lift . return =return
+-- lift (m >>= k) = (lift m) >>= (lift k)
 ```
 
