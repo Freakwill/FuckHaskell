@@ -550,7 +550,7 @@ $x\triangleright f=\mu(Mf(x))$.  *Kleisli 求值*
 
 $m \gg y=m\triangleright x\mapsto y$ *Kleisli 结合运算*
 
-$c (x\gg y) = c x * c y$ *Kleisli 同态*
+$c (x\gg y) = c x *_K c y$ *Kleisli 同态*
 
 ```haskell
 List, join = concat
@@ -595,7 +595,7 @@ do {s; t; g} == s >> t >> g
 
  
 
-### 列表单子
+### 列表单子/控制结构
 
 ```haskell
 sequence :: t (m a) -> m (t a)  -- 类型转换
@@ -619,8 +619,13 @@ main = forM_ [5..10] $ \n -> do
 replicateM :: Int -> m a -> m [a]
 replicateM_ :: Int -> m a -> m ()
 
+-- m: s -> a , s
+sequence_ [m1, m2, ....] ~ m1'm2'.... :: s -> (), s
+replicateM_ n m = m ^ n :: s -> (), s
+sequence [m1, m2, ....] ~ m1'm2'.... :: s -> [....], s
 
-forever :: m a -> m b
+
+forever :: m a -> m b -- sequence . repeat
 
 main = forever $ do
     input <- getLine
@@ -629,6 +634,12 @@ main = forever $ do
 filterM :: (a -> m Bool) -> [a] -> m [a]
 
 foldM :: (b -> a -> m b) -> b -> t a -> m b
+-- do
+-- b1 <- f(b, a0)
+-- b2 <- f(b1, a1)
+-- ...
+-- f(bn, an)
+-- == (f(a0)*f(a1)*f(a2)...f(an))(b)
 
 -- example
 
@@ -649,13 +660,14 @@ instance Functor (State s) where
     -- (f(a), s'), (a, s') = fs(s)
     
 instance Monad (State s) where
+    return x = State $ \s -> (x, s)
     fa >>= f = State $ \s -> let (a, s') = runState fa s in (runState (f a) s')
     -- f(a)(s'), (a, s') = fa(s)
     -- do {b <- fa; f b}
 
     fa >> f == State $ \s -> let (a, s') = runState fa s in (runState f s')
     -- f(s'), (a, s') = fa(s) -- 不利用fa的输出
-    -- f . fa_1
+    -- f . fa_2
 
 get = State $ \s -> (s, s)  -- 获取当前状态，不做改变
 put :: s -> State s ()
@@ -899,6 +911,10 @@ $S(N)=T(i, N): TFa\to FTa, T(f,N)=S(\tilde{f}(N))$.
 
 ## 单子变换: 构造函数 m -> tm
 
+$t:m\mapsto tm, *\to*\to*\to*$
+
+$t$ 在$m$上添加新的功能
+
 ### ReaderT
 
 ```haskell
@@ -948,13 +964,20 @@ instance (Monad m) => Monad (StateT s m) where
     state f = StateT return . f  -- eta.f
 ```
 
-$S a = s \to M (a\times s), \eta a = s\to \eta(a,s)$
+$ Ta = s \to M (a\times s), \eta(a) = \lambda s. \eta(a,s)$
+
+$m\triangleright k = \lambda s. m(s) \triangleright k, l(m)=\lambda s. m\triangleright \lambda a.\eta(a,s)$
+
+```haskell
+lift p :: StateT s IO a -- s -> w -> ((a,s), w'), p: w -> (a, w') ; s-fixed
+st f = return . f -- s -> w -> (f(s), w)   ; w-fixed
+
+lift p -- p:w->(a,w)=Sa  s->w->((a, s), w'); s,w-fixed p is a reading method
+```
 
 
 
 ### MonadTrans
-
-
 
 ```haskell
 class MonadTrans t where
@@ -965,8 +988,32 @@ instance MonadTrans (ReaderT r) where
     
 instance MonadTrans (StateT r) where
     lift = liftStateT
+   
+newtype MaybeT m a = MaybeT {runMaybeT :: m (Maybe a)}
+instance MonadTrans MaybeT where
+    lift m = MaybeT m :: m a -> MaybeT m a
     
 -- lift . return =return
--- lift (m >>= k) = (lift m) >>= (lift k)
+-- lift (m >>= k) = (lift m) >>= (lift . k)
+
+newtype RandT g m a = RandT (StatT g m a)
+(Monad m, RandomGen g) => MonadRandom (RandT g m)
+
+-- R g m a == g -> m (a, g)
+
+```
+
+
+
+### WriterT
+
+```haskell
+newtype WriterT w m a = WriterT {runWriterT :: m (a, w)}
+instance (Monoid w, Monad m) => Monad (WriterT w m) where
+    return a = writer (a, empty)
+    m >>= k = WriterT $ do
+    (a, w) <- runWriterT m
+    (y, w') <- runWriterT (k, a)
+    return (y, w <> w')
 ```
 
