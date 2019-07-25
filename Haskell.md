@@ -184,8 +184,6 @@ scanl/scanr
 
 
 
-
-
 ## 元组，高阶函数
 
 ### 元组
@@ -280,7 +278,7 @@ newtype Const a b = Const a
 newtype State s a = State {runState :: s -> (a, s)}
 ```
 
-newtype 避免额外的打包解包过程, 右侧包裹的类型必须是上层类型.
+`newtype` 避免额外的打包解包过程, 右侧包裹的类型必须是上层类型.
 
 
 
@@ -322,7 +320,7 @@ $Lens(b,a) = Hom_{Set}(Hom_E(a,Fa), Hom_E(b, Fb)), F:C\to D\subset E$ 透镜映�
 
 $lens(f, p)=F(s(p))(f(g(p))):Fb, p:b,g:b\to a, s:a\times b\to b, s(p):a\to b$
 
-esp. $s(g(p),p) =1_b(p), g(s(x,p))=1_a(x)​$. $s​$: setter, $g​$:getter
+esp. $s(g(p),p) =1_b(p), g(s(x,p))=1_a(x)$. $s$: setter, $g$:getter
 
 ```haskell
 -- Lens
@@ -370,6 +368,22 @@ $set(x)=over(.\to x)=s(x,\cdot)$.
 
 
 
+## 数组
+
+```haskell
+listArray (0, 2) [1,2,3,4]
+array (0, 2) [(0,1),(2,2),(1,3)]
+range (1,4)
+index (1, 5) 3 == 2
+inRange (1, 4) 3 == True
+rangeSize (1, 4) == 4
+
+-- bounds/indeces/elems/assocs
+accumArray (+) 0 (1, 3) [(1,2), (1,1), (2,2), (3,3)]
+```
+
+
+
 ## 应用函子
 
 构造映射$\eta: I\dot\to T$, $T:X\to X$.
@@ -395,6 +409,8 @@ $\circledast: F(a\to b)\to Fa\to Fb, a,b,a\to b:Hack, F:Fun(Hack)$,
 $\eta(f)\circledast x=F(f)(x), f\circledast \eta(x)=\eta(e_x)\circledast f$
 
 $\eta(f)\circledast \eta(x)=\eta(f(x))$, $\eta_a:a\to Fa$: add minimum context
+
+$\eta(\alpha) \circledast u \circledast v \circledast w = u \circledast(v \circledast w)$
 
 
 
@@ -425,8 +441,9 @@ replicate <$> Just 1 *> Just (+1) <*> Just 1234
 ### List、Reader 应用函子
 
 ```haskell
-f a = [a]
-f a = c -> a
+-- List [a]
+-- f <*> a = [f[i](a[i]), i]
+-- c -> a
 f2 <*> f1 = \x -> f2 x $ f1 x
 -- const id <*> f1 == f1
 ```
@@ -472,7 +489,7 @@ Just x <> Just y = Just (x <> y)
 class Applicative f => Alternative f where
     empty :: f a
     <|> :: f a -> f a -> f a
-    
+
 instance Alternative [] where
  ...
  
@@ -513,6 +530,8 @@ class Monad m where
 
     (>>=) :: m a -> (a -> m b) -> m b
     x >>= f = join $ fmap f x
+    
+    bind f = join . (fmap f)
 
     (>>) :: m a -> m b -> m b  
     x >> y = x >>= \_ -> y  -- mempty >>= f
@@ -548,7 +567,7 @@ $x\triangleright f=\mu(Mf(x))$.  *Kleisli 求值*
 
 结合性 $m\triangleright (\lambda x. f(x)\triangleright g)=m\triangleright f\triangleright g=m\triangleright (f \ast_K g)$ *Kleisli 复合*
 
-$m \gg y=m\triangleright x\mapsto y$ *Kleisli 结合运算*
+$m \gg y=m\triangleright c y$ *Kleisli 结合运算*
 
 $c (x\gg y) = c x *_K c y$ *Kleisli 同态*
 
@@ -603,6 +622,7 @@ sequence :: t (m a) -> m (t a)  -- 类型转换
 sequence [] = return []
 sequence a:as = a >>= \x -> ((\l -> x:l) <$> sequence as) -- 类似于 Descartes 积
 
+sequence :: t (m a) -> m () -- Kleisli 连乘
 sequence_ [] = return ()
 sequence_ a:as = a >> sequence_ as
 
@@ -670,9 +690,9 @@ instance Monad (State s) where
     -- f . fa_2
 
 get = State $ \s -> (s, s)  -- 获取当前状态，不做改变
-put :: s -> State s ()
+put :: s -> State s ()  -- 输入状态，无输出
 put s = State $ \_ -> ((), s)
-modify f = State $ \s -> ((), f s) -- 无返回值的状态迁移
+modify f = State $ \s -> ((), f s) -- 无输出的状态迁移
 
 fa >> put s = State $ \s -> ((), fa_1 s) = modify fa_1
 ```
@@ -831,7 +851,7 @@ $\mu(x)=R(\lambda t:r.\phi(\phi(x)(t))(t)), \mu(Rg)=R(\lambda t:r.\phi(g(t))(t))
 
 ```haskell
 f a = (m, a)
-(x, a) >>= f = (xf(a)1, f(a)2)
+(x, a) >>= f = (xf1(a), f2(a))
 ```
 
 $\phi((s,a), f)=(sf(a)_1, f(a)_2)$.
@@ -861,8 +881,8 @@ class Foldable t where
     foldl/foldr
     foldl'/foldr' -- 严格求值
     -- foldMap f = fold . (<$> f)
-    
-    
+
+
 data BinaryTree a = Nil | Node a (BinaryTree a) (BinaryTree a)
      deriving (Show)
      
@@ -899,7 +919,7 @@ $d(f, z, t)=F(f,\{a_\lambda\})(z),f:a\to b\to b=a\to Endo(b)$, 折叠reduce形�
      mfo Nil = Nil
      mfo (Node x left right) =
          Node <$> x <*> mfo left <*> mfo right
-         
+
 mapM_ f = foldr ((>>).f) (return ())
 ```
 
@@ -1015,5 +1035,55 @@ instance (Monoid w, Monad m) => Monad (WriterT w m) where
     (a, w) <- runWriterT m
     (y, w') <- runWriterT (k, a)
     return (y, w <> w')
+```
+
+
+
+### 余单子
+
+```haskell
+class Functor w => Comonad w where
+  extract :: w a -> a
+  extend :: (w a -> b) -> w a -> w b
+  duplicate :: w a -> w (w a)
+ 
+  duplicate = extend id
+  extend f = fmap f . duplicate
+  
+  (=>>) :: w b -> (w b -> a) -> a
+  (=>>) = flip extend
+```
+
+
+
+## 高级类型
+
+### 动态类型
+
+```haskell
+data Proxy a = Proxy  -- shadow type
+typeRep :: Proxy a -> TypeRep
+typeRep (Proxy :: Proxy Int) == Int
+
+typeOf :: Typeable a => a -> TypeRep
+
+toDyn :: Typeable a => a -> Dynamic
+fromDyn :: Typeable a => Dynamic -> a -> a
+show (fromDyn (toDyn (1 :: Int)) (0 :: Int))
+-- "1"
+
+dynApp (toDyn f) (toDyn a) == toDYn (f a)
+
+```
+
+
+
+### 存在类型
+
+```haskell
+data Dyn = forall a. Show a => Dyn a
+
+instance Show Dyn where
+    show (Dyn a) = "Dyn: " ++ show a
 ```
 
