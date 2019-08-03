@@ -1,27 +1,30 @@
 # FuckHaskell
 🤓When I do it, I always say fuck Haskell.
 
+## Notes
+### Haskell.md
+my note for Haskell
 
-## MyMath
+## Files
+### MyMath
 
 math functions and operators
 
-## StringOp
+### StringOp
 
 operating strings
 
-
-## showFile
-
-It is a command line tool.
+## CLI
+### showFile
 
 ```haskell
 runHaskell Scripts/showFile.hs --filename [FILEPATH] --linen 50
 ```
 
 
-
 ## Other topics
+
+Just Fuck it!
 
 ### WoW
 
