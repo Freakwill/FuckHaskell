@@ -27,6 +27,8 @@ multi-lines
 
 ```haskell
 3::[2, 4]  -- ==[3,2,4]
+
+-- case clause
 case x of 'a' -> 1
           'b' -> 2
           'c' -> 3
@@ -36,6 +38,7 @@ if ... then ... else ...
 let x=a in expr
 expr where x=a
 
+-- guard grammar
 sgn :: Double -> Double
 sgn x | x<0 = -1
       | x>0 = 1
@@ -137,7 +140,7 @@ data Nat = Zero | Succ Nat -- Zero, Succ: constructor of Nat
 
 ```haskell
 data Person = Person {getName:: String, getAge:: Int, getGender:: Bool}
-p = Person {getName='', getAge=0, getGender=True}
+p = Person {getName="", getAge=0, getGender=True}
 ```
 
 
@@ -217,7 +220,7 @@ f $ x == f x == x & f
 
 ## 类型类
 
-class 定义类型类
+class 定义类型类，相当于OOP的元类
 
 instance 定义类型类的实例
 
@@ -252,14 +255,15 @@ RealFrac <= Real <= (Num, Ord)
 注. Haskell 类型约束信息并不会保存到数据中
 
 
-
-| Haskell        | 数据    | 类型                         | 类型类           |
+<center>不同理论体系概念的类比表</center>
+|      理论/语言      | 0-概念 | 1-概念 | 2-概念 |
 | -------------- | ------- | ---------------------------- | ---------------- |
+| Haskell        | 数据    | 类型                         | 类型类           |
 | 范畴论         | 元素    | 对象/集合                    | 子范畴/范畴      |
-| 例子           | 3       | Int                          | Num/Show/Eq/Hack |
 | oop            | 对象    | 类型                         | 元类             |
 | 代数学         | 元素    | 代数系统                     | 代数系统类型     |
 | Haskell 关键词 | 3:: Int | instance,data, type, newtype | class            |
+| Hasekll例子           | 3       | Int                          | Num/Show/Eq/Hack |
 
 
 
@@ -273,7 +277,7 @@ type Function1D = Double -> Double
 type Function1D a = a -> a
 
 -- newtype 只接收一个参数
-newtype Transform a = Transform （a->a） -- 接近 data (看作 data 特例) 而非 type，比data快速
+newtype Transform a = Transform (a->a） -- 接近 data (看作 data 特例) 而非 type，比data快速
 newtype Const a b = Const a
 newtype State s a = State {runState :: s -> (a, s)}
 ```
@@ -287,7 +291,7 @@ newtype State s a = State {runState :: s -> (a, s)}
 ### 概念
 
 1. 任务盒(thunk): 只是一个表达式，不进行求值
-2. 常态(normal form): 求值后的表达式; 弱常态：部分求值, 所有构造函数创建的数据都是若常态
+2. 常态(normal form): 求值后的表达式; 弱常态：部分求值, 所有构造函数创建的数据都是 弱常态
 3. 底(bottom): $\perp$
 
 ```haskell
@@ -299,7 +303,7 @@ newtype State s a = State {runState :: s -> (a, s)}
 
 
 ```haskell
--- 计算到若常态
+-- 计算到 弱常态
 seq :: a -> b -> a
 $!
 -- 计算到常态
@@ -442,11 +446,18 @@ replicate <$> Just 1 *> Just (+1) <*> Just 1234
 
 ```haskell
 -- List [a]
--- f <*> a = [f[i](a[i]), i]
+-- f <*> a = [f[i](a[j])]
 -- c -> a
 f2 <*> f1 = \x -> f2 x $ f1 x
 -- const id <*> f1 == f1
 ```
+
+$$
+[f_i] \circledast [a_j] = [f_i(a_j)]\\
+f \circledast x(r) = f(r, x(r))
+$$
+
+
 
 #### 反例
 
@@ -467,7 +478,7 @@ instance Monoid a => Applicative (Const a) where
     (Const x) <*> (Const y) = (Const x <> y)
 ```
 
-$x \circledast y =xy$.
+$c x \circledast cy =c(xy)$.
 
 
 
@@ -491,10 +502,10 @@ class Applicative f => Alternative f where
     <|> :: f a -> f a -> f a
 
 instance Alternative [] where
- ...
+ ---
  
 instance Alternative Maybe where
- ...
+ ---
  
 asum :: (Foldable t, Alternative f) => t (f a) -> f a  
 asum = foldr (<|>) empty 
@@ -539,8 +550,8 @@ class Monad m where
     fail :: String -> m a  
     fail msg = error msg  
     
-(<=<) :: (Monad m) => (b -> m c) -> (a -> m b) -> (a -> m c)  
-f <=< g = (\x -> g x >>= f)  -- g >=> f
+(<=<) :: (Monad m) => (b -> m c) -> (a -> m b) -> (a -> m c)
+f <=< g = (\x -> g x >>= f)  -- g >=> f, Kleisli composite
 
 f <*> x = join $ fmap (\f -> fmap f x) f -- f>>= (\f -> f <$> x)
 
@@ -570,6 +581,10 @@ $x\triangleright f=\mu(Mf(x))$.  *Kleisli 求值*
 $m \gg y=m\triangleright c y$ *Kleisli 结合运算*
 
 $c (x\gg y) = c x *_K c y$ *Kleisli 同态*
+
+
+
+*例子：*
 
 ```haskell
 List, join = concat
@@ -608,8 +623,8 @@ main = do
     line <- getLine
     putStrLn line
 
-do {x<-s; y<-t; g} == s >>= \x -> (t >>= \y->g) == s >>= ((\x -> t) >=> g)
-do {s; t; g} == s >> t >> g
+do {x<-s; y<-t; g} == s >>= \x -> (t >>= \y->g) == s >>= ((\x -> t) >=> g) -- g: expression of x, y
+do {s; t; g} == s >> t >> g -- s, t, g in IO ()
 ```
 
  
@@ -667,6 +682,15 @@ foldM :: (b -> a -> m b) -> b -> t a -> m b
 
 ```
 
+$$
+T(f)([a_i])=[f(a_i)]\\
+\eta_a(a_i)=[a_i]\\
+\mu_a([[a_{ij}],...])=[a_{ij}]\\
+[a_j]\triangleright f = [f_i(a_j)]\\
+[a_i]\triangleright p(f) = [f(a_i)], p(f)(a)=[f(a)]=\eta(f(a))=T(f)([a])\\
+[a_i]\gg b = [b_1...,b_j,...,b_1,...], esp. [a_i] \gg [1] =[1,...,1]
+$$
+
 
 
 ### State 单子
@@ -677,24 +701,39 @@ foldM :: (b -> a -> m b) -> b -> t a -> m b
 newtype State a s = State {runState: s -> (a, s)}
 instance Functor (State s) where
     fmap f fs = State $ \s -> let (a, s') = runState fs s in (f a, s')
-    -- (f(a), s'), (a, s') = fs(s)
+    -- T(fs)(s) = (f(a), s'), if fs(s)=(a, s')
     
 instance Monad (State s) where
     return x = State $ \s -> (x, s)
     fa >>= f = State $ \s -> let (a, s') = runState fa s in (runState (f a) s')
-    -- f(a)(s'), (a, s') = fa(s)
+    -- s->f(a)(s'), if (a, s') = fa(s)
     -- do {b <- fa; f b}
 
-    fa >> f == State $ \s -> let (a, s') = runState fa s in (runState f s')
+    fa >> f = State $ \s -> let (a, s') = runState fa s in (runState f s')
     -- f(s'), (a, s') = fa(s) -- 不利用fa的输出
     -- f . fa_2
 
 get = State $ \s -> (s, s)  -- 获取当前状态，不做改变
-put :: s -> State s ()  -- 输入状态，无输出
+put :: s -> State s ()  -- 设置状态，无输出
 put s = State $ \_ -> ((), s)
 modify f = State $ \s -> ((), f s) -- 无输出的状态迁移
 
-fa >> put s = State $ \s -> ((), fa_1 s) = modify fa_1
+fa >> put s = State $ \s -> ((), fa_2 s) = modify fa_2 -- fa_2 s = s', if fa s = (a, s')
+```
+
+$$
+T(f)(s\mapsto(a,s'))=s\mapsto(f(a),s')\\
+\eta(a)=s\mapsto(a, s)\\
+\mu(s\mapsto (f, s'))=s\mapsto f(s')\\
+M(f):s\mapsto(\empty,f(s))\\
+(s\mapsto (a,s'))\triangleright f = s\mapsto f(a)(s');
+f *_K g = gf\\
+(s\mapsto (a,s'))\triangleright p(f) = s\mapsto (f(a), s'), p(f)(a)=s\mapsto(f(a),s)=\eta(f(a))\\
+(s\mapsto (a,s'))\gg f = s\mapsto f(s')
+$$
+
+```haskell
+do {* <- a, return $ f * }  -- a |> p(f)
 ```
 
 
@@ -736,10 +775,10 @@ readMaybe :: Read a => String -> Maybe a
 -- 文件操作
 readFile :: FilePath -> IO ()
 writeFile :: FilePath -> String -> IO()
-appendFile :: ...
+appendFile :: ---
 
 -- 变量
-data IORef a = ...
+data IORef a = ---
 newIORef :: a -> IORef a  -- a <- newIORef 0 :: IORef Int
 readIORef :: IORef a -> IO a
 writeIORef :: IORef a -> a -> IO ()
@@ -785,6 +824,22 @@ getElems :: STArray s i e -> ST s [e]
 
 
 
+### Writer 单子
+
+```python
+newtype Writer w a = Writer {runWriter :: (a, w)}
+tell x == writer ((), x)
+```
+
+
+$$
+Ta=a\times w\\
+\eta(a)=(a,1)\\
+\mu((a,w_1),w_2)=(a,w_1w_2)\\
+(a,w)\triangleright f =(f_1(a),f_2(a)w), (a,w)\triangleright p(f) =(f(a),w), (a,w)\gg f =(f_1,f_2w)
+$$
+
+
 ### Reader 单子
 
 ```haskell
@@ -795,7 +850,7 @@ headT, bodyT :: String -> String  -- Template
 -- greatingMike = headT "Mike" ++ bodyT "Mike"
 renderGreeting = gather <$> headT <*> bodyT <*> where
     gather x y z = x ++ y
-    
+
 data Greet = Greet {
     headT :: String
     , bodyT :: String
@@ -834,17 +889,19 @@ newtype Reader r a = Reader {runReader :: r -> a}
 instance Functor (Reader r) where
     fmap f m = Reader $ \r -> f (runReader m r) = Reader (f . (runReader m))
 
-m >> f = Reader $ \r -> runReader (f (runReader m r)) r
+m >>= f = Reader $ \r -> runReader (f (runReader m r)) r
 ```
 
 $Rr:$ Reader 函子, $Hom(r,\cdot)$
 
-$Rr(f)x= R(\lambda y:r. f(\phi(x)(y)))=R(f\circ\phi(x))$
 
-$Rr(f)R(g)=R(fg)$.
-
-$\mu(x)=R(\lambda t:r.\phi(\phi(x)(t))(t)), \mu(Rg)=R(\lambda t:r.\phi(g(t))(t)).$
-
+$$
+R(f)(\phi) = f \phi \\
+\eta(a) =r\mapsto a\\
+\mu(f)=r\mapsto f(r,r)\\
+(x \triangleright f) (r)= f(x(r), r)\\
+x \gg f = f
+$$
 
 
 ### 半群作用单子
@@ -899,9 +956,9 @@ instance Foldable BinaryTree where
  foldl f z t = appEndo (getDual (foldMap (Dual . Endo . filp f) t)) z
 ```
 
-$F(f,\{a_\lambda\})=\prod_\lambda f(a_\lambda), f:a\to S,\{a_\lambda\}:ta$，半群折叠形式
+$F(f,\{a_\lambda\})=\prod_\lambda f(a_\lambda), f:a\to S,\{a_\lambda\}:Ta$，半群折叠形式/折叠函子/可折叠范畴
 
-$d(f, z, t)=F(f,\{a_\lambda\})(z),f:a\to b\to b=a\to Endo(b)$, 折叠reduce形式
+$d(f, z,\{a_\lambda\})=F(f,\{a_\lambda\})(z),f:a\to b\to b=a\to End(b)$, 折叠reduce形式
 
 
 
